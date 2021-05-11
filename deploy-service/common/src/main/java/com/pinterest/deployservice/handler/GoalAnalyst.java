@@ -277,6 +277,13 @@ public class GoalAnalyst {
     // This is intended to be used for update agent record, not for goal,
     // We populate all the fields, since this could be used for insertOrUpdate as well
     AgentBean genUpdateBeanByReport(PingReportBean report, AgentBean agent) {
+        // Don't update if not changed.
+        if (!agent || agent.getHost_id() != host_id || agent.getDeploy_id() != report.getDeployId() ||
+            agent.getEnv_id() != report.getEnvId() || agent.Fail_count() != report.getFailCount() ||
+            agent.getStatus() != report.getStatus() || agent.getLast_err_no() != report.getErrorCode() ||
+            agent.getState() != state || agent.getDeploy_stage() != report.getDeploy_stage()) {
+                return null;
+        }
         // We generate complete bean in case we need to insertOrUpdate it into agents table
         AgentBean updateBean = new AgentBean();
         updateBean.setHost_name(host);
@@ -315,6 +322,9 @@ public class GoalAnalyst {
     // This is intended to be used for deploy goal to install next stage
     AgentBean genNextStageUpdateBean(EnvironBean env, PingReportBean report, AgentBean agent) {
         AgentBean agentBean = genUpdateBeanByReport(report, agent);
+        if (agentBean == null) {
+            return null;
+        }
         // TODO optimize this, next stage could be skipped sometime
         agentBean.setDeploy_stage(getNextStage(env.getDeploy_type(), report.getDeployStage()));
         agentBean.setStatus(AgentStatus.UNKNOWN);
@@ -383,6 +393,9 @@ public class GoalAnalyst {
     // Generate next stop stage agent bean
     AgentBean genNextStopStageBean(PingReportBean report, AgentBean agent) {
         AgentBean agentBean = genUpdateBeanByReport(report, agent);
+        if (agentBean == null) {
+            return null;
+        }
         agentBean.setState(AgentState.STOP);
         agentBean.setDeploy_stage(getNextStage(DeployType.STOP, agent.getDeploy_stage()));
         agentBean.setStatus(AgentStatus.UNKNOWN);
@@ -462,6 +475,9 @@ public class GoalAnalyst {
         AgentBean updateBean = null;
         if (report != null) {
             updateBean = genUpdateBeanByReport(report, agent);
+            if (updateBean == null) {
+                return null;
+            }
             if (!StringUtils.isEmpty(report.getEnvId())) {
                 // Only record this in agent table when there is env, otherwise,
                 // we do not know which env it belongs to
@@ -586,6 +602,8 @@ public class GoalAnalyst {
                     newUpdateBean = genNextStageUpdateBean(env, report, agent);
                     LOG.debug("GoalAnalyst case 1.2 - host {} successfully finished stage {} for same deploy {}, set env {} as a goal candidate for next stage {}.",
                         host, report.getDeployStage(), env.getDeploy_id(), env.getEnv_id(), newUpdateBean.getDeploy_stage());
+                    // Since the report already claim agent is restarting, no need to wait
+                    installCandidates.add(new InstallCandidate(env, false, newUpdateBean, report));
                 } else {
                     if (updateBean.getState() == AgentState.PAUSED_BY_SYSTEM) {
                         /**
@@ -604,13 +622,13 @@ public class GoalAnalyst {
                          * We allow agent to retry either because user explicitly set AgentState to RESET, or the
                          * reported error is not fail.
                          */
-                        newUpdateBean = genUpdateBeanByReport(report, agent);
                         LOG.debug("GoalAnalyst case 1.4 - host {} failed stage {} for same deploy {}, set env {} as a goal candidate and repeat the same stage {}.",
-                            host, report.getDeployStage(), env.getDeploy_id(), env.getEnv_id(), newUpdateBean.getDeploy_stage());
+                            host, report.getDeployStage(), env.getDeploy_id(), env.getEnv_id(), updateBean.getDeploy_stage());
+                        // Since the report already claim agent is restarting, no need to wait
+                        installCandidates.add(new InstallCandidate(env, false, updateBean, report));
                     }
                 }
-                // Since the report already claim agent is restarting, no need to wait
-                installCandidates.add(new InstallCandidate(env, false, newUpdateBean, report));
+
             } else {
                 /**
                  * Case 1.5: Env has a different deploy than report, this is typically the start of a new deploy.
