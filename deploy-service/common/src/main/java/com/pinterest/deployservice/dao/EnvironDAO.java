@@ -35,6 +35,8 @@ public interface EnvironDAO {
 
     void setExternalId(EnvironBean bean, String externalId) throws Exception;
 
+    void setStageIsSOX(EnvironBean bean, Boolean stage_is_sox) throws Exception;
+
     UpdateStatement genUpdateStatement(String envId, EnvironBean bean);
 
     void delete(String envId) throws Exception;

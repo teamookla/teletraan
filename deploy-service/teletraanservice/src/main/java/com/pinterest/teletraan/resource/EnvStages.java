@@ -52,6 +52,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class EnvStages {
+
     public enum ActionType {
         ENABLE,
         DISABLE
@@ -74,54 +75,62 @@ public class EnvStages {
 
     @GET
     @ApiOperation(
-            value = "Get an environment",
-            notes = "Returns an environment object given environment and stage names",
-            response = EnvironBean.class)
+        value = "Get an environment",
+        notes = "Returns an environment object given environment and stage names",
+        response = EnvironBean.class)
     public EnvironBean get(
-            @ApiParam(value = "Environment name", required = true)@PathParam("envName") String envName,
-            @ApiParam(value = "Stage name", required = true)@PathParam("stageName") String stageName) throws Exception {
+        @ApiParam(value = "Environment name", required = true) @PathParam("envName") String envName,
+        @ApiParam(value = "Stage name", required = true) @PathParam("stageName") String stageName)
+        throws Exception {
         return Utils.getEnvStage(environDAO, envName, stageName);
     }
 
     @PUT
     @ApiOperation(
-            value = "Update an environment",
-            notes = "Update an environment given environment and stage names with a environment object")
+        value = "Update an environment",
+        notes = "Update an environment given environment and stage names with a environment object")
     public void update(@Context SecurityContext sc,
-                       @ApiParam(value = "Environment name", required = true)@PathParam("envName") String envName,
-                       @ApiParam(value = "Stage name", required = true)@PathParam("stageName") String stageName,
+                       @ApiParam(value = "Environment name", required = true) @PathParam("envName") String envName,
+                       @ApiParam(value = "Stage name", required = true) @PathParam("stageName") String stageName,
                        @ApiParam(value = "Desired Environment object with updates", required = true)
                            EnvironBean environBean) throws Exception {
         EnvironBean origBean = Utils.getEnvStage(environDAO, envName, stageName);
-        authorizer.authorize(sc, new Resource(origBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
+        authorizer
+            .authorize(sc, new Resource(origBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
         String operator = sc.getUserPrincipal().getName();
         try {
             environBean.validate();
         } catch (Exception e) {
             throw new TeletaanInternalException(Response.Status.BAD_REQUEST, e.toString());
         }
-        if (origBean.getStage_type() != EnvType.DEFAULT && origBean.getStage_type() != environBean.getStage_type()) {
-            throw new TeletaanInternalException(Response.Status.BAD_REQUEST, "Modification of stage type is not allowed!");
+        if (origBean.getStage_type() != EnvType.DEFAULT && origBean.getStage_type() != environBean
+            .getStage_type()) {
+            throw new TeletaanInternalException(Response.Status.BAD_REQUEST,
+                "Modification of stage type is not allowed!");
         }
         environBean.setEnv_name(origBean.getEnv_name());
         environBean.setStage_name(origBean.getStage_name());
         environHandler.updateStage(environBean, operator);
-        configHistoryHandler.updateConfigHistory(origBean.getEnv_id(), Constants.TYPE_ENV_GENERAL, environBean, operator);
-        configHistoryHandler.updateChangeFeed(Constants.CONFIG_TYPE_ENV, origBean.getEnv_id(), Constants.TYPE_ENV_GENERAL, operator);
+        configHistoryHandler
+            .updateConfigHistory(origBean.getEnv_id(), Constants.TYPE_ENV_GENERAL, environBean,
+                operator);
+        configHistoryHandler.updateChangeFeed(Constants.CONFIG_TYPE_ENV, origBean.getEnv_id(),
+            Constants.TYPE_ENV_GENERAL, operator);
         LOG.info("Successfully updated env {}/{} with {} by {}.",
             envName, stageName, environBean, operator);
     }
 
     @DELETE
     @ApiOperation(
-            value = "Delete an environment",
-            notes = "Deletes an environment given a environment and stage names")
+        value = "Delete an environment",
+        notes = "Deletes an environment given a environment and stage names")
     public void delete(@Context SecurityContext sc,
-                       @ApiParam(value = "Environment name", required = true)@PathParam("envName") String envName,
-                       @ApiParam(value = "Stage name", required = true)@PathParam("stageName") String stageName)
-                        throws Exception {
+                       @ApiParam(value = "Environment name", required = true) @PathParam("envName") String envName,
+                       @ApiParam(value = "Stage name", required = true) @PathParam("stageName") String stageName)
+        throws Exception {
         EnvironBean origBean = Utils.getEnvStage(environDAO, envName, stageName);
-        authorizer.authorize(sc, new Resource(origBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
+        authorizer
+            .authorize(sc, new Resource(origBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
         String operator = sc.getUserPrincipal().getName();
         environHandler.deleteEnvStage(envName, stageName, operator);
         LOG.info("Successfully deleted env {}/{} by {}.", envName, stageName, operator);
@@ -129,35 +138,82 @@ public class EnvStages {
 
     @POST
     @ApiOperation(
-          value = "Sets the external_id on a stage",
-          notes = "Sets the external_id column on a stage given the environment and stage names",
-          response = EnvironBean.class
+        value = "Sets the external_id on a stage",
+        notes = "Sets the external_id column on a stage given the environment and stage names",
+        response = EnvironBean.class
     )
     @Path("/external_id")
     public EnvironBean setExternalId(
-            @ApiParam(value = "Environment name", required = true)@PathParam("envName") String envName,
-            @ApiParam(value = "Stage name", required = true)@PathParam("stageName") String stageName,
-            @ApiParam(value="External id", required = true) String externalId)
-            throws Exception {
+        @ApiParam(value = "Environment name", required = true) @PathParam("envName") String envName,
+        @ApiParam(value = "Stage name", required = true) @PathParam("stageName") String stageName,
+        @ApiParam(value = "External id", required = true) String externalId)
+        throws Exception {
 
-       try {
-         UUID uuid = UUID.fromString(externalId);
-       } catch (Exception ex){
-         LOG.info("Invalid UUID supplied - {}.", externalId);
-         throw new TeletaanInternalException(Response.Status.BAD_REQUEST, String.format("Client supplied an invalid externalId - %s. Please retry with an externalId in the UUID format", externalId));
-       }
+        try {
+            UUID uuid = UUID.fromString(externalId);
+        } catch (Exception ex) {
+            LOG.info("Invalid UUID supplied - {}.", externalId);
+            throw new TeletaanInternalException(Response.Status.BAD_REQUEST, String.format(
+                "Client supplied an invalid externalId - %s. Please retry with an externalId in the UUID format",
+                externalId));
+        }
 
-       EnvironBean originalBean = environDAO.getByStage(envName, stageName);
-       if(originalBean == null) {
-         throw new TeletaanInternalException(Response.Status.NOT_FOUND,
-             String.format("Environment %s/%s does not exist.", envName, stageName));
-       }
-       environDAO.setExternalId(originalBean, externalId);
-       EnvironBean updatedBean = environDAO.getByStage(envName, stageName);
-       String newExternalId = updatedBean.getExternal_id();
+        EnvironBean originalBean = environDAO.getByStage(envName, stageName);
+        if (originalBean == null) {
+            throw new TeletaanInternalException(Response.Status.NOT_FOUND,
+                String.format("Environment %s/%s does not exist.", envName, stageName));
+        }
+        environDAO.setExternalId(originalBean, externalId);
+        EnvironBean updatedBean = environDAO.getByStage(envName, stageName);
+        String newExternalId = updatedBean.getExternal_id();
 
-       LOG.info("Successfully updated Env/stage - {}/{} with externalid = {}", envName, stageName, newExternalId);
-       return updatedBean;
+        LOG.info("Successfully updated Env/stage - {}/{} with externalid = {}", envName, stageName,
+            newExternalId);
+        return updatedBean;
+    }
+
+    // TODO: strongly prefer the route of PATCH endpoint on /:env/ that supports UPDATE partial EnvironBean object; not this route.
+    // TODO: POST should not support update, it is not idempotent. POST is for creating new objects, see MDN summary of HTTP methods
+    // TODO: This may already be possible with above POST endpoint, not sure why the external_id endpoint exists if env POST supports update
+    @POST
+    @ApiOperation(
+        value = "Sets stage_is_sox on a stage",
+        notes = "Sets the stage_is_sox column on a stage given the environment and stage names",
+        response = EnvironBean.class
+    )
+    @Path("/stage_is_sox")
+    public EnvironBean setStageIsSOX(
+        @ApiParam(value = "Environment name", required = true) @PathParam("envName") String envName,
+        @ApiParam(value = "Stage name", required = true) @PathParam("stageName") String stageName,
+        // TODO: Can this take a Boolean? Can remove validation if yes.
+        @ApiParam(value = "stage_is_sox", required = true) String stage_is_sox)
+        throws Exception {
+
+        // TODO: what format is this coming in?
+        //  prefer to get true/false from json true/false values rather than json strings if possible.
+        // validate that we are only getting "true" or "false"
+        if (!stage_is_sox.equalsIgnoreCase("true") || !stage_is_sox.equalsIgnoreCase("false")) {
+            LOG.info("Invalid Boolean supplied for env/stage stage_is_sox - {}.", stage_is_sox);
+            throw new TeletaanInternalException(Response.Status.BAD_REQUEST, String.format(
+                "Client supplied an invalid Boolean value - %s. Please retry with 'true' or 'false'",
+                stage_is_sox));
+        }
+
+        EnvironBean originalBean = environDAO.getByStage(envName, stageName);
+        if (originalBean == null) {
+            throw new TeletaanInternalException(Response.Status.NOT_FOUND,
+                String.format("Environment %s/%s does not exist.", envName, stageName));
+        }
+        // TODO: Why isn't setStageIsSOX being picked up from EnvironDAO.java?
+        environDAO.setStageIsSOX(originalBean, Boolean.valueOf(stage_is_sox));
+        // TODO: what is the purpose of the following two lines? we don't validate, we just return to the log and endpoint
+        // TODO: e.g. couldn't we just return the originalBean or does the local object not update with environDAO???
+        EnvironBean updatedBean = environDAO.getByStage(envName, stageName);
+        String new_stage_is_sox = updatedBean.getStageIsSOX();
+
+        LOG.info("Successfully updated Env/stage - {}/{} with stage_is_sox = {}", envName,
+            stageName, new_stage_is_sox);
+        return updatedBean;
     }
 
     @POST
@@ -168,7 +224,8 @@ public class EnvStages {
                        @NotEmpty @QueryParam("actionType") ActionType actionType,
                        @NotEmpty @QueryParam("description") String description) throws Exception {
         EnvironBean envBean = Utils.getEnvStage(environDAO, envName, stageName);
-        authorizer.authorize(sc, new Resource(envBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
+        authorizer
+            .authorize(sc, new Resource(envBean.getEnv_name(), Resource.Type.ENV), Role.OPERATOR);
         String operator = sc.getUserPrincipal().getName();
 
         TagBean tagBean = new TagBean();
@@ -182,13 +239,16 @@ public class EnvStages {
                 tagBean.setValue(TagValue.DISABLE_ENV);
                 break;
             default:
-                throw new TeletaanInternalException(Response.Status.BAD_REQUEST, "No action found.");
+                throw new TeletaanInternalException(Response.Status.BAD_REQUEST,
+                    "No action found.");
         }
 
         tagBean.setTarget_id(envBean.getEnv_id());
         tagBean.setTarget_type(TagTargetType.ENVIRONMENT);
         tagBean.setComments(description);
         tagHandler.createTag(tagBean, operator);
-        LOG.info(String.format("Successfully updated action %s for %s/%s by %s", actionType, envName, stageName, operator));
+        LOG.info(String
+            .format("Successfully updated action %s for %s/%s by %s", actionType, envName,
+                stageName, operator));
     }
 }

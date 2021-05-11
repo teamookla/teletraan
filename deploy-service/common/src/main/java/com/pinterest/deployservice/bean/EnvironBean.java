@@ -67,6 +67,7 @@ import javax.validation.constraints.Pattern;
  * allow_private_build TINYINT(1)    DEFAULT 0,
  * ensure_trusted_build TINYINT(1)    DEFAULT 0,
  * stage_type VARCHAR(32) NOT NULL DEFAULT PRODUCTION,
+ * stage_is_sox TINYINT(1)    DEFAULT 0,
  * <p>
  * PRIMARY KEY   (env_id)
  * );
@@ -194,6 +195,9 @@ public class EnvironBean implements Updatable, Serializable {
 
     @JsonProperty("stageType")
     private EnvType stage_type;
+
+    @JsonProperty("stageIsSOX")
+    private Boolean stage_is_sox;
 
     public void validate() throws Exception {
         // A bunch of these fields will always be alphanumeric (with _ and -)
@@ -512,6 +516,7 @@ public class EnvironBean implements Updatable, Serializable {
         return external_id;
     }
 
+    // TODO: not used?? doublecheck, setter is in EnvironDAO.java...
     public void setExternal_id(String external_id) {
         this.external_id = external_id;
     }
@@ -539,6 +544,14 @@ public class EnvironBean implements Updatable, Serializable {
     public void setStage_type(EnvType stage_type) {
         this.stage_type = stage_type;
     }
+
+    public Boolean getStageIsSOX() { return stage_is_sox; }
+
+    // TODO: not used?? doublecheck, consider leaving for consistency
+    public void setStageIsSOX(Boolean stage_is_sox) {
+        this.stage_is_sox = stage_is_sox;
+    }
+
 
     @Override
     public SetClause genSetClause() {
@@ -583,6 +596,7 @@ public class EnvironBean implements Updatable, Serializable {
         clause.addColumn("allow_private_build", allow_private_build);
         clause.addColumn("ensure_trusted_build", ensure_trusted_build);
         clause.addColumn("stage_type", stage_type);
+        clause.addColumn("stage_is_sox", stage_is_sox);
         return clause;
     }
 

@@ -41,6 +41,8 @@ public class DBEnvironDAOImpl implements EnvironDAO {
         "UPDATE environs SET %s";
     private static final String SET_EXTERNAL_ID =
         "UPDATE environs SET external_id=? WHERE env_name=? AND stage_name=?";
+    private static final String SET_STAGE_IS_SOX =
+        "UPDATE environs SET stage_is_sox=? WHERE env_name=? AND stage_name=?";
     private static final String GET_ENV_BY_ID =
         "SELECT * FROM environs WHERE env_id=?";
     private static final String GET_ENV_BY_NAME =
@@ -145,6 +147,16 @@ public class DBEnvironDAOImpl implements EnvironDAO {
         String envName = bean.getEnv_name();
         String stageName = bean.getStage_name();
         new QueryRunner(dataSource).update(clause, externalId, envName, stageName);
+    }
+
+    @Override
+    public void setStageIsSOX(EnvironBean bean, Boolean stage_is_sox) throws Exception {
+        ResultSetHandler<EnvironBean> h = new BeanHandler<EnvironBean>(EnvironBean.class);
+        SetClause setClause = bean.genSetClause();
+        String clause = String.format(SET_STAGE_IS_SOX, setClause.getClause());
+        String envName = bean.getEnv_name();
+        String stageName = bean.getStage_name();
+        new QueryRunner(dataSource).update(clause, stage_is_sox, envName, stageName);
     }
 
     @Override
