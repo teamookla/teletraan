@@ -172,10 +172,13 @@ public class EnvStages {
         return updatedBean;
     }
 
-    // TODO: strongly prefer the route of PATCH endpoint on /:env/ that supports UPDATE partial EnvironBean object; not this route.
+    // TODO: strongly prefer the route of PATCH endpoint on /:env/:stage that supports UPDATE partial EnvironBean object; not this route.
     // TODO: POST should not support update, it is not idempotent. POST is for creating new objects, see MDN summary of HTTP methods
     // TODO: This may already be possible with above POST endpoint, not sure why the external_id endpoint exists if env POST supports update
-    @POST
+    //
+    // TODO: This endpoint does patch the object, but it's too constrained. In the future we should pass a payload and patch the object
+    // TODO: Alternatively, we could create a constrained PATCH endpoint on /:env/:stage that validates that it only can receive stage_is_sox.
+    @PATCH
     @ApiOperation(
         value = "Sets stage_is_sox on a stage",
         notes = "Sets the stage_is_sox column on a stage given the environment and stage names",
