@@ -205,10 +205,10 @@ public class Builds {
         buildBean.setPublisher(sc.getUserPrincipal().getName());
 
         // Check if build is approved via our allow list of URLs
-        if (!buildAllowlist.approved(buildBean.getArtifact_url())) {
-            throw new TeletaanInternalException(Response.Status.BAD_REQUEST,
-                "Artifact URL points to unapproved location.");
-        }
+        //if (!buildAllowlist.approved(buildBean.getArtifact_url())) {
+        //    throw new TeletaanInternalException(Response.Status.BAD_REQUEST,
+        //        "Artifact URL points to unapproved location.");
+        //}
 
         // We append commit SHA after build id to make build directory name human friendly
         String id = CommonUtils.getBase64UUID();
